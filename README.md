@@ -1,2 +1,163 @@
 # Projeto-Clima-Tempo
 DESAFIO PARA ANÁLISE DE DADOS
+
+import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+
+class Banco:
+
+    conexao = None
+    cursor = None
+    ClimaTempo = ''
+    usuario = 'postgres'
+    senha = '123'
+    porta = '5432'
+
+    def __init__(self, ClimaTempo):
+        # o bloco except será excecutado somente se ocorrer alguma exceção no bloco try
+        try:
+            # cria uma conexão com o banco postgres para poder criar o ClimaTempo
+            self.conexao = psycopg2.connect(database="postgres", user=self.usuario, password=self.senha, port=self.porta)
+            self.conexao.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)  # para evitar trabalhar com start transaction, commit e rollback
+            self.cursor = self.conexao.cursor()  # obtém o cursor de acesso ao BD
+            self.ClimaTempo = ClimaTempo
+            # verifica se o BD existe
+            self.cursor.execute("select count(*) from pg_catalog.pg_database WHERE datname = %s", [self.ClimaTempo])
+            if self.cursor.fetchone()[0] == 0:
+                self.cursor.execute("create database %s" % self.ClimaTempo)
+                print("Database %s criado com sucesso" % self.ClimaTempo)
+            self.closeConexao()
+        except Exception as e:
+            print(e)
+
+    def openConexao(self):
+        # cria uma conexão com o banco ClimaTempo
+        self.conexao = psycopg2.connect(database=self.ClimaTempo, user=self.usuario, password=self.senha, port=self.porta)
+        self.conexao.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)  # para evitar trabalhar com start transaction, commit e rollback
+        self.cursor = self.conexao.cursor()  # obtém o cursor de acesso ao BD
+
+    def closeConexao(self):
+        self.conexao.close() # encerra a conexão com o banco postgres
+
+    def existBD(self):
+        self.openConexao()
+        # verifica se o BD existe
+        self.cursor.execute("select count(*) from pg_catalog.pg_database WHERE datname = %s", [self.ClimaTempo])
+        if self.cursor.fetchone()[0] == 1:
+            return True
+        else:
+            return False
+
+    def existTable(self):
+        # verifica se o BD existe
+        self.cursor.execute("select count(*) from information_schema.tables where table_name='alertaclientes'")
+        if self.cursor.fetchone()[0] == 1:
+            return True
+        else:
+            return False
+
+    def dropDatabase(self):
+        try:
+            # cria uma conexão com o banco postgres para poder criar o ClimaTempo
+            self.conexao = psycopg2.connect(database="postgres", user=self.usuario, password=self.senha, port=self.porta)
+            self.conexao.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)  # para evitar trabalhar com start transaction, commit e rollback
+            self.cursor = self.conexao.cursor()  # obtém o cursor de acesso ao BD
+            if self.existBD() == True:  # remove o BD se ele existir
+                self.cursor.execute("drop database %s" % self.ClimaTempo)
+                # verifica se o BD foi de fato removido
+                if self.existBD() == False:
+                    print("Database %s removido com sucesso" % self.ClimaTempo)
+                else:
+                    print("Problemas para remover o %s" % self.ClimaTempo)
+                self.ClimaTempo = ''
+            self.closeConexao()
+        except Exception as e:
+            print(e)
+
+    def createTable(self):
+        try:
+            self.openConexao()
+            clausula = "CREATE TABLE if not exists alertaclientes(" + \
+                            "idcliente serial PRIMARY KEY," + \
+                            "nome varchar(100)," + \
+                            "ddi character (3),"+\
+                            "ddd character (3),"+\
+                            "telefone character (10),"+ \
+                            "ddi2 character (3)," + \
+                            "ddd2 character (3)," + \
+                            "telefone2 character (10)," + \
+                            "email varchar (50),"+\
+                            "email2 varchar (50) null,"+\
+                            "regioes varchar (50),"+\
+                       "alertas varchar (50))"
+            self.cursor.execute(clausula)
+            # verifica se a tabela foi criada
+            if self.existTable() == True:
+                print("alertaclientes criada com sucesso")
+            else:
+                print("alertaclientes não foi criada")
+            self.closeConexao()
+        except Exception as e:
+            print(e)
+
+    def dropTable(self):
+        try:
+            self.openConexao()
+            clausula = "drop table if exists alertaclientes"
+            self.cursor.execute(clausula)
+            if self.existTable() == False:
+                print("alertaclientes removida com sucesso")
+            else:
+                print("alertaclientes não foi removida")
+            self.closeConexao()
+        except Exception as e:
+            print(e)
+
+    def insert(self, nome, ddi, ddd, telefone, ddi2, ddd2, telefone2, email, email2, regioes, alertas):
+        try:
+            self.openConexao()
+            if self.existTable() == True:
+                self.cursor.execute("insert into alertaclientes(nome,ddi, ddd, telefone, ddi2, ddd2, telefone2, email, email2, regioes, alertas) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", [nome, ddi, ddd, telefone, ddi2, ddd2, telefone2, email, email2, regioes, alertas])
+            else:
+                print("alertaclientes não existe")
+            self.closeConexao()
+        except Exception as e:
+            print(e)
+
+    def select(self):
+        try:
+            self.openConexao()
+            if self.existTable() == True:
+                self.cursor.execute("select * from alertaclientes order by idcliente")
+                linhas = self.cursor.fetchall()
+                for linha in linhas:
+                    print(linha)
+            else:
+                print("alertaclientes não existe")
+            self.closeConexao()
+        except Exception as e:
+            print(e)
+
+    def delete(self, idcliente):
+        try:
+            self.openConexao()
+            if self.existTable() == True:
+                self.cursor.execute("delete from alertaclientes where idcliente=%s", [idcliente])
+            else:
+                print("alertaclientes não existe")
+            self.closeConexao()
+        except Exception as e:
+            print(e)
+
+    def update(self, idcliente, nome, ddi, ddd, telefone, ddi2, ddd2, telefone2, email, email2, regioes, alertas):
+        try:
+            self.openConexao()
+            if self.existTable() == True:
+                self.cursor.execute("update alertaclientes set nome=%s, ddi=%s, ddd=%s, telefone=%s, ddi2=%s, ddd2=%s, telefone2=%s, email=%s, email2=%s, regioes=%s, alertas=%s where idcliente=%s",
+                    [nome, ddi, ddd, telefone, ddi2, ddd2, telefone2, email, email2, regioes, idcliente])
+            else:
+                print("alertaclientes não existe")
+            self.closeConexao()
+        except Exception as e:
+            print(e)
+
