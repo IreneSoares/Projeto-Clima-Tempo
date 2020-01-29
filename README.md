@@ -1,6 +1,7 @@
 # Projeto-Clima-Tempo
 DESAFIO PARA ANÁLISE DE DADOS
 
+
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
